@@ -41,23 +41,12 @@ std::vector<int> generateRandomArray(int n) {
     return arr;
 }
 
-// Функция для генерации наихудшего случая (уже отсортированный массив)
-std::vector<int> generateWorstCaseArray(int n) {
-    std::vector<int> arr(n);
-    for (int i = 0; i < n; i++) {
-        arr[i] = i;
+// Функция для вывода массива
+void printArray(const std::vector<int>& arr) {
+    for (int i = 0; i < arr.size(); i++) {
+        std::cout << arr[i] << " ";
     }
-    return arr;
-}
-
-// Функция для генерации наилучшего случая (массив, который делится на равные части)
-std::vector<int> generateBestCaseArray(int n) {
-    std::vector<int> arr(n);
-    for (int i = 0; i < n; i++) {
-        arr[i] = i;
-    }
-    std::random_shuffle(arr.begin(), arr.end());
-    return arr;
+    std::cout << std::endl;
 }
 
 int main() {
@@ -74,7 +63,22 @@ int main() {
         for (int k = 0; k < num_experiments; k++) {
             operation_count = 0;
             std::vector<int> arr = generateRandomArray(n);
+
+            // Вывод массива до сортировки
+            std::cout << "n = " << n << ", Experiment " << k + 1 << std::endl;
+            std::cout << "Array before sorting: ";
+            printArray(arr);
+
             quickSort(arr, 0, n - 1);
+
+            // Вывод массива после сортировки
+            std::cout << "Array after sorting: ";
+            printArray(arr);
+
+            // Вывод количества операций
+            std::cout << "Number of operations: " << operation_count << std::endl;
+            std::cout << "-------------------------" << std::endl;
+
             total_operations += operation_count;
             min_operations = std::min(min_operations, operation_count);
             max_operations = std::max(max_operations, operation_count);
