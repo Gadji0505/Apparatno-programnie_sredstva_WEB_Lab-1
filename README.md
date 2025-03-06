@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <string>
 #include <cmath>
+#include <stdexcept>
 
 using namespace std;
 
@@ -109,7 +110,12 @@ void test() {
         operation_count = 0;
         vector<int> a = generate_number(n);
         vector<int> b = generate_number(n);
-        mult(a, b);
+        try {
+            mult(a, b);
+        } catch (const exception& e) {
+            cerr << "Ошибка при умножении чисел длины " << n << ": " << e.what() << endl;
+            continue;
+        }
         operation_counts.push_back(operation_count);
         cout << "n = " << n << ", T(n) = " << operation_count << endl;
     }
