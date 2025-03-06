@@ -1,147 +1,113 @@
 #include <iostream>
 #include <vector>
 #include <algorithm>
-#include <string>
-#include <cmath>
-#include <stdexcept>
 
 using namespace std;
 
-// Глобальный счетчик операций
-int operation_count = 0;
-
-// Функция для сложения двух длинных чисел
-vector<int> add(const vector<int>& a, const vector<int>& b) {
-    vector<int> result;
+// Функция сложения двух длинных чисел
+vector<int> add(const vector<int>& a, const vector<int>& b, int base) {
+    vector<int> result(max(a.size(), b.size()) + 1, 0);
     int carry = 0;
-    int max_len = max(a.size(), b.size());
 
-    for (int i = 0; i < max_len || carry; ++i) {
-        int digit_a = (i < a.size()) ? a[i] : 0;
-        int digit_b = (i < b.size()) ? b[i] : 0;
-        int sum = digit_a + digit_b + carry;
-        carry = sum / 21;
-        result.push_back(sum % 21);
-        operation_count++; // Увеличиваем счетчик операций
+    size_t i = 0;
+    while (i < a.size() || i < b.size() || carry) {
+        int sum = carry;
+        if (i < a.size()) sum += a[i];
+        if (i < b.size()) sum += b[i];
+        result[i] = sum % base;
+        carry = sum / base;
+        i++;
     }
 
+    // Удаление ведущих нулей
+    while (result.size() > 1 && result.back() == 0) {
+        result.pop_back();
+    }
     return result;
 }
 
-// Функция для вычитания двух длинных чисел
-vector<int> sub(const vector<int>& a, const vector<int>& b) {
+// Функция вычитания двух длинных чисел
+vector<int> sub(const vector<int>& a, const vector<int>& b, int base) {
     vector<int> result;
     int borrow = 0;
 
-    for (int i = 0; i < a.size(); ++i) {
-        int digit_a = a[i];
-        int digit_b = (i < b.size()) ? b[i] : 0;
-        int diff = digit_a - digit_b - borrow;
-
-        if (diff < 0) {
-            diff += 21;
+    for (size_t i = 0; i < a.size(); ++i) {
+        int sub = a[i] - borrow;
+        if (i < b.size()) {
+            sub -= b[i];
+        }
+        if (sub < 0) {
+            sub += base;
             borrow = 1;
         } else {
             borrow = 0;
         }
-
-        result.push_back(diff);
-        operation_count++; // Увеличиваем счетчик операций
+        result.push_back(sub);
     }
 
-    // Удаляем ведущие нули
+    // Удаление ведущих нулей
     while (result.size() > 1 && result.back() == 0) {
         result.pop_back();
     }
+    return result;
+}
+
+// Функция, которая возвращает целую часть деления на 10^k
+vector<int> shift(const vector<int>& a, int k) {
+    vector<int> result(a);
+    result.insert(result.end(), k, 0);
+    return result;
+}
+
+// Функция умножения с помощью алгоритма Карацубы
+vector<int> karatsuba(const vector<int>& x, const vector<int>& y, int base) {
+    // Базовый случай
+    if (x.size() == 1 && y.size() == 1) {
+        return vector<int>{x[0] * y[0]};
+    }
+
+    size_t n = max(x.size(), y.size());
+    size_t half = n / 2;
+
+    vector<int> x0(x.begin(), x.begin() + min(half, x.size()));
+    vector<int> x1(x.begin() + min(half, x.size()), x.end());
+    vector<int> y0(y.begin(), y.begin() + min(half, y.size()));
+    vector<int> y1(y.begin() + min(half, y.size()), y.end());
+
+    vector<int> z0 = karatsuba(x0, y0, base);
+    vector<int> z1 = karatsuba(add(x0, x1, base), add(y0, y1, base), base);
+    vector<int> z2 = karatsuba(x1, y1, base);
+
+    vector<int> result = add(z0, shift(sub(z1, add(z0, z2, base), base), half), base);
+    result = add(result, shift(z2, 2 * half), base);
 
     return result;
 }
 
-// Функция для сдвига длинного числа на shift разрядов
-vector<int> sh(const vector<int>& a, int shift) {
-    vector<int> result(shift, 0);
-    result.insert(result.end(), a.begin(), a.end());
-    operation_count += shift; // Увеличиваем счетчик операций
-    return result;
+// Функция для вывода длинного числа
+void printNumber(const vector<int>& number) {
+    for (auto it = number.rbegin(); it != number.rend(); ++it) {
+        cout << *it;
+    }
+    cout << endl;
 }
 
-// Рекурсивная функция умножения по алгоритму Карацубы
-vector<int> mult(const vector<int>& a, const vector<int>& b) {
-    int n = a.size();
-
-    // Базовый случай: если длина числа <= 1, выполняем простое умножение
-    if (n <= 1) {
-        int product = a[0] * b[0];
-        operation_count++; // Увеличиваем счетчик операций
-        return {product % 21, product / 21};
-    }
-
-    // Если длина нечетная, добавляем ведущий ноль для выравнивания
-    if (n % 2 != 0) {
-        vector<int> a_padded = a;
-        vector<int> b_padded = b;
-        a_padded.insert(a_padded.begin(), 0);
-        b_padded.insert(b_padded.begin(), 0);
-        return mult(a_padded, b_padded);
-    }
-
-    int half = n / 2;
-
-    // Разделяем числа на две части
-    vector<int> a_low(a.begin(), a.begin() + half);
-    vector<int> a_high(a.begin() + half, a.end());
-    vector<int> b_low(b.begin(), b.begin() + half);
-    vector<int> b_high(b.begin() + half, b.end());
-
-    // Рекурсивно умножаем части
-    vector<int> z0 = mult(a_low, b_low);
-    vector<int> z2 = mult(a_high, b_high);
-    vector<int> z1 = mult(add(a_low, a_high), add(b_low, b_high));
-    z1 = sub(sub(z1, z0), z2);
-
-    // Собираем результат
-    vector<int> result = add(z0, sh(z1, half));
-    result = add(result, sh(z2, 2 * half));
-
-    return result;
-}
-
-// Функция для генерации тестовых длинных чисел
-vector<int> generate_number(int n) {
-    vector<int> number(n);
-    for (int i = 0; i < n; ++i) {
-        number[i] = rand() % 21; // Случайные цифры от 0 до 20
-    }
-    return number;
-}
-
-// Функция для тестирования
-void test() {
-    vector<int> n_values = {128, 256, 512, 1024, 2048, 4096, 8192, 16384};
-    vector<int> operation_counts;
-
-    for (int n : n_values) {
-        operation_count = 0;
-        vector<int> a = generate_number(n);
-        vector<int> b = generate_number(n);
-        try {
-            vector<int> result = mult(a, b);
-            operation_counts.push_back(operation_count);
-            cout << "n = " << n << ", T(n) = " << operation_count << endl;
-        } catch (const exception& e) {
-            cerr << "Ошибка при умножении чисел длины " << n << ": " << e.what() << endl;
-        }
-    }
-
-    // Построение графика T(n) (можно использовать внешние инструменты)
-    cout << "График T(n):" << endl;
-    for (int i = 0; i < n_values.size(); ++i) {
-        cout << "n = " << n_values[i] << ", T(n) = " << operation_counts[i] << endl;
-    }
-}
-
+// Основная функция для теста
 int main() {
-    srand(time(0)); // Инициализация генератора случайных чисел
-    test(); // Запуск тестирования
+    // Пример: 12345 * 67890
+    vector<int> number1 = {5, 4, 3, 2, 1}; // 12345
+    vector<int> number2 = {0, 9, 8, 7, 6}; // 67890
+
+    cout << "Number 1: ";
+    printNumber(number1);
+
+    cout << "Number 2: ";
+    printNumber(number2);
+
+    vector<int> product = karatsuba(number1, number2, 10);
+    
+    cout << "Product: ";
+    printNumber(product);
+
     return 0;
 }
