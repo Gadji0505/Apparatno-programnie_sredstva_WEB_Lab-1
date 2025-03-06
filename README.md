@@ -68,24 +68,38 @@ vector<int> sh(const vector<int>& a, int shift) {
 // Рекурсивная функция умножения по алгоритму Карацубы
 vector<int> mult(const vector<int>& a, const vector<int>& b) {
     int n = a.size();
+
+    // Базовый случай: если длина числа <= 1, выполняем простое умножение
     if (n <= 1) {
         int product = a[0] * b[0];
         operation_count++; // Увеличиваем счетчик операций
         return {product % 21, product / 21};
     }
 
+    // Если длина нечетная, добавляем ведущий ноль для выравнивания
+    if (n % 2 != 0) {
+        vector<int> a_padded = a;
+        vector<int> b_padded = b;
+        a_padded.insert(a_padded.begin(), 0);
+        b_padded.insert(b_padded.begin(), 0);
+        return mult(a_padded, b_padded);
+    }
+
     int half = n / 2;
 
+    // Разделяем числа на две части
     vector<int> a_low(a.begin(), a.begin() + half);
     vector<int> a_high(a.begin() + half, a.end());
     vector<int> b_low(b.begin(), b.begin() + half);
     vector<int> b_high(b.begin() + half, b.end());
 
+    // Рекурсивно умножаем части
     vector<int> z0 = mult(a_low, b_low);
     vector<int> z2 = mult(a_high, b_high);
     vector<int> z1 = mult(add(a_low, a_high), add(b_low, b_high));
     z1 = sub(sub(z1, z0), z2);
 
+    // Собираем результат
     vector<int> result = add(z0, sh(z1, half));
     result = add(result, sh(z2, 2 * half));
 
@@ -111,13 +125,12 @@ void test() {
         vector<int> a = generate_number(n);
         vector<int> b = generate_number(n);
         try {
-            mult(a, b);
+            vector<int> result = mult(a, b);
+            operation_counts.push_back(operation_count);
+            cout << "n = " << n << ", T(n) = " << operation_count << endl;
         } catch (const exception& e) {
             cerr << "Ошибка при умножении чисел длины " << n << ": " << e.what() << endl;
-            continue;
         }
-        operation_counts.push_back(operation_count);
-        cout << "n = " << n << ", T(n) = " << operation_count << endl;
     }
 
     // Построение графика T(n) (можно использовать внешние инструменты)
