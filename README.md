@@ -1,95 +1,128 @@
 #include <iostream>
 #include <vector>
-#include <cstdlib>
-#include <ctime>
 #include <algorithm>
+#include <string>
+#include <cmath>
+
+using namespace std;
 
 // Глобальный счетчик операций
 int operation_count = 0;
 
-// Функция для разделения массива
-int partition(std::vector<int>& arr, int low, int high) {
-    int pivot = arr[high]; // Опорный элемент
-    int i = low - 1;
+// Функция для сложения двух длинных чисел
+vector<int> add(const vector<int>& a, const vector<int>& b) {
+    vector<int> result;
+    int carry = 0;
+    int max_len = max(a.size(), b.size());
 
-    for (int j = low; j < high; j++) {
-        operation_count++; // Счетчик операций
-        if (arr[j] < pivot) {
-            i++;
-            std::swap(arr[i], arr[j]);
+    for (int i = 0; i < max_len || carry; ++i) {
+        int digit_a = (i < a.size()) ? a[i] : 0;
+        int digit_b = (i < b.size()) ? b[i] : 0;
+        int sum = digit_a + digit_b + carry;
+        carry = sum / 21;
+        result.push_back(sum % 21);
+        operation_count++; // Увеличиваем счетчик операций
+    }
+
+    return result;
+}
+
+// Функция для вычитания двух длинных чисел
+vector<int> sub(const vector<int>& a, const vector<int>& b) {
+    vector<int> result;
+    int borrow = 0;
+
+    for (int i = 0; i < a.size(); ++i) {
+        int digit_a = a[i];
+        int digit_b = (i < b.size()) ? b[i] : 0;
+        int diff = digit_a - digit_b - borrow;
+
+        if (diff < 0) {
+            diff += 21;
+            borrow = 1;
+        } else {
+            borrow = 0;
         }
+
+        result.push_back(diff);
+        operation_count++; // Увеличиваем счетчик операций
     }
-    std::swap(arr[i + 1], arr[high]);
-    return i + 1;
+
+    // Удаляем ведущие нули
+    while (result.size() > 1 && result.back() == 0) {
+        result.pop_back();
+    }
+
+    return result;
 }
 
-// Быстрая сортировка
-void quickSort(std::vector<int>& arr, int low, int high) {
-    if (low < high) {
-        int pi = partition(arr, low, high);
-        quickSort(arr, low, pi - 1);
-        quickSort(arr, pi + 1, high);
-    }
+// Функция для сдвига длинного числа на shift разрядов
+vector<int> sh(const vector<int>& a, int shift) {
+    vector<int> result(shift, 0);
+    result.insert(result.end(), a.begin(), a.end());
+    operation_count += shift; // Увеличиваем счетчик операций
+    return result;
 }
 
-// Функция для генерации случайного массива
-std::vector<int> generateRandomArray(int n) {
-    std::vector<int> arr(n);
-    for (int i = 0; i < n; i++) {
-        arr[i] = rand() % 10000; // Случайные числа от 0 до 9999
+// Рекурсивная функция умножения по алгоритму Карацубы
+vector<int> mult(const vector<int>& a, const vector<int>& b) {
+    int n = a.size();
+    if (n <= 1) {
+        int product = a[0] * b[0];
+        operation_count++; // Увеличиваем счетчик операций
+        return {product % 21, product / 21};
     }
-    return arr;
+
+    int half = n / 2;
+
+    vector<int> a_low(a.begin(), a.begin() + half);
+    vector<int> a_high(a.begin() + half, a.end());
+    vector<int> b_low(b.begin(), b.begin() + half);
+    vector<int> b_high(b.begin() + half, b.end());
+
+    vector<int> z0 = mult(a_low, b_low);
+    vector<int> z2 = mult(a_high, b_high);
+    vector<int> z1 = mult(add(a_low, a_high), add(b_low, b_high));
+    z1 = sub(sub(z1, z0), z2);
+
+    vector<int> result = add(z0, sh(z1, half));
+    result = add(result, sh(z2, 2 * half));
+
+    return result;
 }
 
-// Функция для вывода массива
-void printArray(const std::vector<int>& arr) {
-    for (int i = 0; i < arr.size(); i++) {
-        std::cout << arr[i] << " ";
+// Функция для генерации тестовых длинных чисел
+vector<int> generate_number(int n) {
+    vector<int> number(n);
+    for (int i = 0; i < n; ++i) {
+        number[i] = rand() % 21; // Случайные цифры от 0 до 20
     }
-    std::cout << std::endl;
+    return number;
+}
+
+// Функция для тестирования
+void test() {
+    vector<int> n_values = {128, 256, 512, 1024, 2048, 4096, 8192, 16384};
+    vector<int> operation_counts;
+
+    for (int n : n_values) {
+        operation_count = 0;
+        vector<int> a = generate_number(n);
+        vector<int> b = generate_number(n);
+        mult(a, b);
+        operation_counts.push_back(operation_count);
+        cout << "n = " << n << ", T(n) = " << operation_count << endl;
+    }
+
+    // Построение графика T(n) (можно использовать внешние инструменты)
+    cout << "График T(n):" << endl;
+    for (int i = 0; i < n_values.size(); ++i) {
+        cout << "n = " << n_values[i] << ", T(n) = " << operation_counts[i] << endl;
+    }
 }
 
 int main() {
-    srand(time(0));
-    const int num_experiments = 1000;
-    const int step = 100;
-    const int max_n = 10000;
-
-    for (int n = 100; n <= max_n; n += step) {
-        long long total_operations = 0;
-        int min_operations = INT_MAX;
-        int max_operations = 0;
-
-        for (int k = 0; k < num_experiments; k++) {
-            operation_count = 0;
-            std::vector<int> arr = generateRandomArray(n);
-
-            // Вывод массива до сортировки
-            std::cout << "n = " << n << ", Experiment " << k + 1 << std::endl;
-            std::cout << "Array before sorting: ";
-            printArray(arr);
-
-            quickSort(arr, 0, n - 1);
-
-            // Вывод массива после сортировки
-            std::cout << "Array after sorting: ";
-            printArray(arr);
-
-            // Вывод количества операций
-            std::cout << "Number of operations: " << operation_count << std::endl;
-            std::cout << "-------------------------" << std::endl;
-
-            total_operations += operation_count;
-            min_operations = std::min(min_operations, operation_count);
-            max_operations = std::max(max_operations, operation_count);
-        }
-
-        double mean_operations = static_cast<double>(total_operations) / num_experiments;
-
-        std::cout << "n = " << n << ", Tmin(n) = " << min_operations
-                  << ", Tmean(n) = " << mean_operations
-                  << ", Tmax(n) = " << max_operations << std::endl;
-    }
-
+    srand(time(0)); // Инициализация генератора случайных чисел
+    test(); // Запуск тестирования
     return 0;
 }
